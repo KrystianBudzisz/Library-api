@@ -1,31 +1,23 @@
 package book.model;
 
 import jakarta.validation.constraints.NotBlank;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
-@Getter
-@Setter
-@AllArgsConstructor
+@Data
+@Builder
 public class CreateBookCommand {
 
-
-    @NotBlank
+    @NotBlank(message = "Title cannot be blank")
     private String title;
 
-    @NotBlank
+    @NotBlank(message = "Author cannot be blank")
     private String author;
 
-    private boolean blocked;
-
     public Book toEntity() {
-        Book book = new Book();
-        book.setTitle(title);
-        book.setAuthor(author);
-        book.setBlocked(blocked);
-        return book;
+        return Book.builder()
+                .title(this.title)
+                .author(this.author)
+                .isAvailable(true)
+                .build();
     }
-
 }
-

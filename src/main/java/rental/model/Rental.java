@@ -1,17 +1,17 @@
 package rental.model;
 
 import book.model.Book;
-import customer.model.Customer;
+import client.model.Client;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
+
 import java.time.LocalDate;
 @Getter
 @Setter
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 @Entity
 public class Rental {
 
@@ -20,22 +20,17 @@ public class Rental {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "customer_id", nullable = false)
-    private Customer customer;
+    @JoinColumn(name = "client_id")
+    private Client client;
 
     @ManyToOne
-    @JoinColumn(name = "book_id", nullable = false)
+    @JoinColumn(name = "book_id")
     private Book book;
 
-    @Column(nullable = false)
-    private LocalDate rentalDate;
+    private LocalDate startDate;
 
-    @Column(nullable = false)
-    private LocalDate dueDate;
+    private LocalDate endDate;
 
-    private LocalDate returnDate;
-
+    private boolean returned;
 }
-
-
 

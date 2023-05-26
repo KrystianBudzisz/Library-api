@@ -1,11 +1,10 @@
-package book.model;
+package client.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import rental.model.Rental;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 
@@ -15,18 +14,16 @@ import java.util.Set;
 @AllArgsConstructor
 @Builder
 @Entity
-public class Book {
+public class Client {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String title;
+    private String name;
 
-    private String author;
+    private String email;
 
-    @OneToMany(mappedBy = "book")
+    @OneToMany(mappedBy = "client")
     private Set<Rental> rentals;
-
-    private boolean isAvailable;
 }

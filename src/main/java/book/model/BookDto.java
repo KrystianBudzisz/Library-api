@@ -1,30 +1,24 @@
 package book.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 @Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@Builder
 public class BookDto {
 
     private Long id;
     private String title;
     private String author;
-    private boolean blocked;
+    private boolean isAvailable;
 
     public static BookDto fromEntity(Book book) {
-        BookDto dto = new BookDto();
-        dto.setId(book.getId());
-        dto.setTitle(book.getTitle());
-        dto.setAuthor(book.getAuthor());
-        dto.setBlocked(book.isBlocked());
-        return dto;
+        return BookDto.builder()
+                .id(book.getId())
+                .title(book.getTitle())
+                .author(book.getAuthor())
+                .isAvailable(book.isAvailable())
+                .build();
     }
-
 }
 
 
