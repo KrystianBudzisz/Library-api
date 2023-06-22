@@ -1,11 +1,8 @@
-INSERT INTO client (first_name, last_name, email) VALUES
-('Jan', 'Kowalski', 'jan.kowalski@example.com'),
-('Anna', 'Nowak', 'anna.nowak@example.com');
+INSERT INTO clients (first_Name, last_Name) VALUES ('John', 'Doe');
+INSERT INTO clients (first_Name, last_Name) VALUES ('Jane', 'Doe');
 
-INSERT INTO book (title, author, blocked) VALUES
-('Pan Tadeusz', 'Adam Mickiewicz', false),
-('Lalka', 'Bolesław Prus', false);
+INSERT INTO books (title, author, available) VALUES ('Book One', 'Author One', true);
+INSERT INTO books (title, author, available) VALUES ('Book Two', 'Author Two', true);
 
-INSERT INTO rental (client_id, book_id, start_date, end_date, returned) VALUES
-(1, 1, '2023-05-01', '2023-05-31', false),
-(2, 2, '2023-05-15', '2023-06-15', false);
+INSERT INTO rentals (client_id, book_id, start_date, end_date, returned) VALUES (1, 1, '2023-01-01', '2023-01-31', false);
+INSERT INTO rentals (client_id, book_id, start_date, end_date, returned) VALUES (2, 2, '2023-01-01', '2023-01-31', false);

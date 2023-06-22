@@ -1,84 +1,125 @@
-//package com.example.library.client;
-//
-//import client.ClientRepository;
-//import client.ClientService;
-//import client.model.Client;
-//import exception.NotFoundException;
-//import org.junit.jupiter.api.BeforeEach;
-//import org.junit.jupiter.api.Test;
-//import org.junit.jupiter.api.extension.ExtendWith;
-//import org.mockito.InjectMocks;
-//import org.mockito.Mock;
-//import org.mockito.junit.jupiter.MockitoExtension;
-//import org.springframework.data.domain.Page;
-//import org.springframework.data.domain.PageImpl;
-//import org.springframework.data.domain.PageRequest;
-//import org.springframework.data.domain.Pageable;
-//
-//import java.util.Arrays;
-//import java.util.Optional;
-//
-//import static org.mockito.Mockito.*;
-//import static org.junit.jupiter.api.Assertions.*;
-//
-//@ExtendWith(MockitoExtension.class)
-//public class ClientServiceTest {
-//
-//    @Mock
-//    private ClientRepository clientRepository;
-//
-//    @InjectMocks
-//    private ClientService clientService;
-//
-//    private Client client;
-//
-//    @BeforeEach
-//    public void setUp() {
-//        client = Client.builder()
-//                .id(1L)
-//                .firstName("John")
-//                .lastName("Doe")
-//                .build();
-//    }
-//
-//    @Test
-//    public void testFindById() {
-//        when(clientRepository.findById(1L)).thenReturn(Optional.of(client));
-//
-//        Client foundClient = clientService.findById(1L);
-//
-//        assertEquals(client, foundClient);
-//        verify(clientRepository, times(1)).findById(1L);
-//    }
-//
-//    @Test
-//    public void testFindById_NotFound() {
-//        when(clientRepository.findById(1L)).thenReturn(Optional.empty());
-//
-//        assertThrows(NotFoundException.class, () -> clientService.findById(1L));
-//        verify(clientRepository, times(1)).findById(1L);
-//    }
-//
-//    @Test
-//    public void testSave() {
-//        when(clientRepository.save(any(Client.class))).thenReturn(client);
-//
-//        Client createdClient = clientService.save(client);
-//
-//        assertEquals(client, createdClient);
-//        verify(clientRepository, times(1)).save(any(Client.class));
-//    }
-//
-//    @Test
-//    public void testFindAll() {
-//        Pageable pageable = PageRequest.of(0, 5);
-//        Page<Client> clientPage = new PageImpl<>(Arrays.asList(client), pageable, 1);
-//        when(clientRepository.findAll(pageable)).thenReturn(clientPage);
-//
-//        Page<Client> foundClients = clientService.findAll(pageable);
-//
-//        assertEquals(clientPage, foundClients);
-//        verify(clientRepository, times(1)).findAll(pageable);
-//    }
-//}
-//
+package com.example.library.client;
+
+import com.example.library.client.model.Client;
+import com.example.library.client.model.ClientDto;
+import com.example.library.client.model.ClientMapper;
+import com.example.library.client.model.CreateClientCommand;
+import com.example.library.exception.ResourceNotFoundException;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.*;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+@SpringBootTest
+class ClientServiceTest {
+
+    @Autowired
+    private ClientService clientService;
+
+    @MockBean
+    private ClientRepository clientRepository;
+
+    @Autowired
+    private ClientMapper clientMapper;
+
+    @Test
+    void testCreateClient() {
+        // Utwórz dane wejściowe żądania
+        CreateClientCommand createClientCommand = new CreateClientCommand("John", "Doe");
+
+        // Utwórz klienta
+        Client newClient = clientMapper.mapToEntity(createClientCommand);
+        Client savedClient = new Client();
+        savedClient.setId(1L);
+        savedClient.setFirstName("John");
+        savedClient.setLastName("Doe");
+
+        // Zdefiniuj zachowanie mocka dla repository
+        Mockito.when(clientRepository.save(Mockito.any(Client.class))).thenReturn(savedClient);
+
+        // Wywołaj metodę createClient() w serwisie
+        ClientDto createdClient = clientService.createClient(createClientCommand);
+
+        // Sprawdź, czy odpowiednie metody repository zostały wywołane
+        Mockito.verify(clientRepository, Mockito.times(1)).save(Mockito.any(Client.class));
+
+        // Sprawdź, czy zwrócony klient ma poprawne dane
+        Assertions.assertEquals(savedClient.getId(), createdClient.getId());
+        Assertions.assertEquals(savedClient.getFirstName(), createdClient.getFirstName());
+        Assertions.assertEquals(savedClient.getLastName(), createdClient.getLastName());
+    }
+
+    @Test
+    void testGetAllClients() {
+        // Utwórz stronę z wynikami
+        Pageable pageable = PageRequest.of(0, 10, Sort.Direction.ASC, "lastName");
+
+        // Utwórz listę klientów
+        List<Client> clients = new ArrayList<>();
+        clients.add(new Client(1L, "John", "Doe"));
+        clients.add(new Client(2L, "Jane", "Smith"));
+
+        // Zdefiniuj zachowanie mocka dla repository
+        Mockito.when(clientRepository.findAll(pageable)).thenReturn(new PageImpl<>(clients));
+
+        // Wywołaj metodę getAllClients() w serwisie
+        Page<ClientDto> result = clientService.getAllClients(pageable);
+
+        // Sprawdź, czy odpowiednia metoda repository została wywołana
+        Mockito.verify(clientRepository, Mockito.times(1)).findAll(pageable);
+
+        // Sprawdź, czy liczba klientów i ich dane są poprawne
+        Assertions.assertEquals(clients.size(), result.getTotalElements());
+        Assertions.assertEquals(clients.get(0).getId(), result.getContent().get(0).getId());
+        Assertions.assertEquals(clients.get(0).getFirstName(), result.getContent().get(0).getFirstName());
+        Assertions.assertEquals(clients.get(0).getLastName(), result.getContent().get(0).getLastName());
+        Assertions.assertEquals(clients.get(1).getId(), result.getContent().get(1).getId());
+        Assertions.assertEquals(clients.get(1).getFirstName(), result.getContent().get(1).getFirstName());
+        Assertions.assertEquals(clients.get(1).getLastName(), result.getContent().get(1).getLastName());
+    }
+
+    @Test
+    void testGetClientById() {
+        // Utwórz istniejącego klienta o znanym identyfikatorze
+        Long clientId = 1L;
+        Client client = new Client(clientId, "John", "Doe");
+
+        // Zdefiniuj zachowanie mocka dla repository
+        Mockito.when(clientRepository.findById(clientId)).thenReturn(Optional.of(client));
+
+        // Wywołaj metodę getClientById() w serwisie
+        ClientDto result = clientService.getClientById(clientId);
+
+        // Sprawdź, czy odpowiednia metoda repository została wywołana
+        Mockito.verify(clientRepository, Mockito.times(1)).findById(clientId);
+
+        // Sprawdź, czy zwrócony klient ma poprawne dane
+        Assertions.assertEquals(client.getId(), result.getId());
+        Assertions.assertEquals(client.getFirstName(), result.getFirstName());
+        Assertions.assertEquals(client.getLastName(), result.getLastName());
+    }
+
+    @Test
+    void testGetClientById_InvalidId() {
+        // Utwórz nieistniejącego klienta o nieznanym identyfikatorze
+        Long clientId = 1L;
+
+        // Zdefiniuj zachowanie mocka dla repository
+        Mockito.when(clientRepository.findById(clientId)).thenReturn(Optional.empty());
+
+        // Wywołaj metodę getClientById() w serwisie i sprawdź, czy rzucony jest wyjątek ResourceNotFoundException
+        Assertions.assertThrows(ResourceNotFoundException.class, () -> {
+            clientService.getClientById(clientId);
+        });
+
+        // Sprawdź, czy odpowiednia metoda repository została wywołana
+        Mockito.verify(clientRepository, Mockito.times(1)).findById(clientId);
+    }
+}
