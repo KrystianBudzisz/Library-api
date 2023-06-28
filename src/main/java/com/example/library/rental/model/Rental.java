@@ -6,7 +6,6 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -35,4 +34,14 @@ public class Rental {
     private LocalDate end;
 
     private boolean returned;
+
+    public Long getClientId() {
+        return client != null ? client.getId() : null;
+    }
+
+    public Long getBookId() {
+        return book != null ? book.getId() : null;
+    }
+
+
 }

@@ -2,18 +2,18 @@ package com.example.library.rental;
 
 import com.example.library.rental.model.CreateRentalCommand;
 import com.example.library.rental.model.RentalDto;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@AllArgsConstructor
 @RestController
 @RequestMapping("/api/rentals")
 public class RentalController {
 
-    @Autowired
     private RentalService rentalService;
 
     @PostMapping

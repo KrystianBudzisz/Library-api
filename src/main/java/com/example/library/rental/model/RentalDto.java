@@ -1,11 +1,11 @@
 package com.example.library.rental.model;
 
-import com.example.library.book.model.Book;
-import com.example.library.client.model.Client;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -20,14 +20,4 @@ public class RentalDto {
     private LocalDate end;
     private boolean returned;
 
-//    public static RentalDto fromEntity(Rental rental) {
-//        return RentalDto.builder()
-//                .id(rental.getId())
-//                .client(rental.getClient())
-//                .book(rental.getBook())
-//                .startDate(rental.getStartDate())
-//                .endDate(rental.getEndDate())
-//                .returned(rental.isReturned())
-//                .build();
-//    }
 }

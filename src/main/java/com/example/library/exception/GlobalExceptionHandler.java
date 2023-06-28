@@ -7,17 +7,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-    @ExceptionHandler(NotFoundException.class)
+    @ExceptionHandler(ResourceNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    public ExceptionDto handleNotFoundException(NotFoundException exception) {
+    public ExceptionDto ResourceNotFoundException(ResourceNotFoundException exception) {
         return new ExceptionDto(exception.getMessage());
     }
 
-    @ExceptionHandler(BookNotAvailableException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ExceptionDto handleBookNotAvailableException(BookNotAvailableException exception) {
-        return new ExceptionDto(exception.getMessage());
-    }
 
 
 }

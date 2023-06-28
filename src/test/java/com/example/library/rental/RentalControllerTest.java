@@ -1,107 +1,140 @@
 package com.example.library.rental;
 
+import com.example.library.book.BookRepository;
+import com.example.library.book.model.Book;
+import com.example.library.client.ClientRepository;
+import com.example.library.client.model.Client;
 import com.example.library.rental.model.CreateRentalCommand;
-import com.example.library.rental.model.RentalDto;
-import org.junit.jupiter.api.Assertions;
+import com.example.library.rental.model.Rental;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.time.LocalDate;
+
+import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class RentalControllerTest {
 
+    private static final Long CLIENT_ID = 1L;
+    private static final Long BOOK_ID = 1L;
+
     @Autowired
-    private RentalController rentalController;
+    private MockMvc mockMvc;
 
-    @MockBean
-    private RentalService rentalService;
+    @Autowired
+    private RentalRepository rentalRepository;
 
-    @Test
-    void testCreateRental() {
-        // Utwórz dane wejściowe żądania
-        CreateRentalCommand createRentalCommand = new CreateRentalCommand();
-        createRentalCommand.setClientId(1L);
-        createRentalCommand.setBookId(1L);
+    @Autowired
+    private ClientRepository clientRepository;
 
-        // Utwórz wynikowy RentalDto
-        RentalDto expectedRentalDto = new RentalDto();
-        expectedRentalDto.setId(1L);
-        expectedRentalDto.setClientId(1L);
-        expectedRentalDto.setBookId(1L);
-        expectedRentalDto.setReturned(false);
+    @Autowired
+    private BookRepository bookRepository;
 
-        // Zdefiniuj zachowanie mocka dla serwisu
-        Mockito.when(rentalService.createRental(Mockito.any(CreateRentalCommand.class))).thenReturn(expectedRentalDto);
+    @Autowired
+    private ObjectMapper objectMapper;
 
-        // Wywołaj metodę createRental()
-        ResponseEntity<RentalDto> responseEntity = rentalController.createRental(createRentalCommand);
+    @BeforeEach
+    void init() {
+        Client client = new Client();
+        client.setId(CLIENT_ID);
+        client.setFirstName("Alice");
+        client.setLastName("Smith");
+        clientRepository.saveAndFlush(client);
 
-        // Sprawdź, czy serwis został wywołany z poprawnym CreateRentalCommand
-        Mockito.verify(rentalService, Mockito.times(1)).createRental(Mockito.any(CreateRentalCommand.class));
-
-        // Sprawdź, czy zwrócone ResponseEntity ma poprawny status i DTO
-        Assertions.assertEquals(HttpStatus.CREATED, responseEntity.getStatusCode());
-        Assertions.assertEquals(expectedRentalDto, responseEntity.getBody());
+        Book book = new Book();
+        book.setId(BOOK_ID);
+        book.setTitle("Sample Book");
+        book.setAvailable(true);
+        bookRepository.saveAndFlush(book);
     }
 
     @Test
-    void testReturnRental() {
-        // Utwórz wynikowy RentalDto po zwrocie wypożyczenia
-        RentalDto expectedReturnedRentalDto = new RentalDto();
-        expectedReturnedRentalDto.setId(1L);
-        expectedReturnedRentalDto.setClientId(1L);
-        expectedReturnedRentalDto.setBookId(1L);
-        expectedReturnedRentalDto.setReturned(true);
+    void shouldCreateRental() throws Exception {
+        CreateRentalCommand createRentalCommand = CreateRentalCommand.builder()
+                .clientId(CLIENT_ID)
+                .bookId(BOOK_ID)
+                .start(LocalDate.now())
+                .end(LocalDate.now().plusDays(7))
+                .build();
 
-        // Zdefiniuj zachowanie mocka dla serwisu
-        Mockito.when(rentalService.returnRental(1L)).thenReturn(expectedReturnedRentalDto);
-
-        // Wywołaj metodę returnRental()
-        ResponseEntity<RentalDto> responseEntity = rentalController.returnRental(1L);
-
-        // Sprawdź, czy serwis został wywołany z poprawnym ID
-        Mockito.verify(rentalService, Mockito.times(1)).returnRental(1L);
-
-        // Sprawdź, czy zwrócone ResponseEntity ma poprawny status i DTO
-        Assertions.assertEquals(HttpStatus.OK, responseEntity.getStatusCode());
-        Assertions.assertEquals(expectedReturnedRentalDto, responseEntity.getBody());
+        mockMvc.perform(post("/api/rentals")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createRentalCommand)))
+                .andDo(print())
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.clientId").value(CLIENT_ID))
+                .andExpect(jsonPath("$.bookId").value(BOOK_ID))
+                .andExpect(jsonPath("$.start").value(createRentalCommand.getStart().toString()))
+                .andExpect(jsonPath("$.end").value(createRentalCommand.getEnd().toString()))
+                .andExpect(jsonPath("$.returned").value(false));
     }
 
     @Test
-    void testGetClientRentals() {
-        // Utwórz dane testowe - wypożyczenia klienta
-        List<RentalDto> rentals = new ArrayList<>();
-        RentalDto rental1 = new RentalDto();
-        rental1.setId(1L);
-        rental1.setClientId(1L);
-        rental1.setBookId(1L);
-        rental1.setReturned(false);
-        rentals.add(rental1);
-        RentalDto rental2 = new RentalDto();
-        rental2.setId(2L);
-        rental2.setClientId(1L);
-        rental2.setBookId(2L);
-        rental2.setReturned(true);
-        rentals.add(rental2);
+    void shouldReturnRental() throws Exception {
+        Rental rental = createRental();
 
-        // Zdefiniuj zachowanie mocka dla serwisu
-        Mockito.when(rentalService.getClientRentals(1L)).thenReturn(rentals);
+        mockMvc.perform(put("/api/rentals/{id}/return", rental.getId()))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(rental.getId()))
+                .andExpect(jsonPath("$.clientId").value(CLIENT_ID))
+                .andExpect(jsonPath("$.bookId").value(BOOK_ID))
+                .andExpect(jsonPath("$.start").value(rental.getStart().toString()))
+                .andExpect(jsonPath("$.end").value(rental.getEnd().toString()))
+                .andExpect(jsonPath("$.returned").value(true));
+    }
 
-        // Wywołaj metodę getClientRentals()
-        ResponseEntity<List<RentalDto>> responseEntity = rentalController.getClientRentals(1L);
+    @Test
+    void shouldGetClientRentals() throws Exception {
+        rentalRepository.deleteAll();
 
-        // Sprawdź, czy serwis został wywołany z poprawnym clientId
-        Mockito.verify(rentalService, Mockito.times(1)).getClientRentals(1L);
+        Rental rental = createRental();
 
-        // Sprawdź, czy zwrócone ResponseEntity ma poprawny status i listę DTO
-        Assertions.assertEquals(HttpStatus.OK, responseEntity.getStatusCode());
-        Assertions.assertEquals(rentals, responseEntity.getBody());
+        mockMvc.perform(get("/api/rentals/client/{clientId}", CLIENT_ID))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].id").value(rental.getId()))
+                .andExpect(jsonPath("$[0].clientId").value(CLIENT_ID))
+                .andExpect(jsonPath("$[0].bookId").value(BOOK_ID))
+                .andExpect(jsonPath("$[0].start").value(rental.getStart().toString()))
+                .andExpect(jsonPath("$[0].end").value(rental.getEnd().toString()))
+                .andExpect(jsonPath("$[0].returned").value(false));
+    }
+
+
+    private Rental createRental() {
+        Rental rental = new Rental();
+        rental.setClient(clientRepository.getById(CLIENT_ID));
+        rental.setBook(bookRepository.getById(BOOK_ID));
+        rental.setStart(LocalDate.now());
+        rental.setEnd(LocalDate.now().plusDays(7));
+        rental.setReturned(false);
+        return rentalRepository.saveAndFlush(rental);
+    }
+
+    @AfterEach
+    void teardown() {
+        rentalRepository.deleteAll();
+        clientRepository.deleteAll();
+        bookRepository.deleteAll();
     }
 }

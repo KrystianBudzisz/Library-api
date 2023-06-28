@@ -2,8 +2,6 @@ package com.example.library.client.model;
 
 import org.springframework.stereotype.Component;
 
-import org.springframework.stereotype.Component;
-
 @Component
 public class ClientMapper {
 

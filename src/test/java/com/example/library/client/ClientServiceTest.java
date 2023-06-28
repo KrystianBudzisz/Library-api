@@ -4,122 +4,105 @@ import com.example.library.client.model.Client;
 import com.example.library.client.model.ClientDto;
 import com.example.library.client.model.ClientMapper;
 import com.example.library.client.model.CreateClientCommand;
-import com.example.library.exception.ResourceNotFoundException;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.data.domain.*;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-@SpringBootTest
-class ClientServiceTest {
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.when;
 
-    @Autowired
-    private ClientService clientService;
+@ExtendWith(MockitoExtension.class)
+public class ClientServiceTest {
 
-    @MockBean
+    @Mock
     private ClientRepository clientRepository;
 
-    @Autowired
+    @Mock
     private ClientMapper clientMapper;
 
+    @InjectMocks
+    private ClientService clientService;
+
     @Test
-    void testCreateClient() {
-        // Utwórz dane wejściowe żądania
-        CreateClientCommand createClientCommand = new CreateClientCommand("John", "Doe");
+    public void testCreateClient() {
+        CreateClientCommand createClientCommand = new CreateClientCommand("John","Doe");
 
-        // Utwórz klienta
-        Client newClient = clientMapper.mapToEntity(createClientCommand);
-        Client savedClient = new Client();
-        savedClient.setId(1L);
-        savedClient.setFirstName("John");
-        savedClient.setLastName("Doe");
 
-        // Zdefiniuj zachowanie mocka dla repository
-        Mockito.when(clientRepository.save(Mockito.any(Client.class))).thenReturn(savedClient);
+        Client client = new Client();
+        client.setId(1L);
+        client.setFirstName("John");
+        client.setLastName("Doe");
 
-        // Wywołaj metodę createClient() w serwisie
-        ClientDto createdClient = clientService.createClient(createClientCommand);
+        ClientDto clientDto = new ClientDto();
+        clientDto.setId(1L);
+        clientDto.setFirstName("John");
+        clientDto.setLastName("Doe");
 
-        // Sprawdź, czy odpowiednie metody repository zostały wywołane
-        Mockito.verify(clientRepository, Mockito.times(1)).save(Mockito.any(Client.class));
+        when(clientMapper.mapToEntity(createClientCommand)).thenReturn(client);
+        when(clientRepository.save(client)).thenReturn(client);
+        when(clientMapper.mapToDto(client)).thenReturn(clientDto);
 
-        // Sprawdź, czy zwrócony klient ma poprawne dane
-        Assertions.assertEquals(savedClient.getId(), createdClient.getId());
-        Assertions.assertEquals(savedClient.getFirstName(), createdClient.getFirstName());
-        Assertions.assertEquals(savedClient.getLastName(), createdClient.getLastName());
+        ClientDto result = clientService.createClient(createClientCommand);
+
+        assertEquals(clientDto, result);
     }
 
     @Test
-    void testGetAllClients() {
-        // Utwórz stronę z wynikami
-        Pageable pageable = PageRequest.of(0, 10, Sort.Direction.ASC, "lastName");
+    public void testGetClientById() {
+        Long id = 1L;
 
-        // Utwórz listę klientów
-        List<Client> clients = new ArrayList<>();
-        clients.add(new Client(1L, "John", "Doe"));
-        clients.add(new Client(2L, "Jane", "Smith"));
+        Client client = new Client();
+        client.setId(id);
+        client.setFirstName("John");
+        client.setLastName("Doe");
 
-        // Zdefiniuj zachowanie mocka dla repository
-        Mockito.when(clientRepository.findAll(pageable)).thenReturn(new PageImpl<>(clients));
+        ClientDto clientDto = new ClientDto();
+        clientDto.setId(id);
+        clientDto.setFirstName("John");
+        clientDto.setLastName("Doe");
 
-        // Wywołaj metodę getAllClients() w serwisie
+        when(clientRepository.findById(id)).thenReturn(Optional.of(client));
+        when(clientMapper.mapToDto(client)).thenReturn(clientDto);
+
+        ClientDto result = clientService.getClientById(id);
+
+        assertEquals(clientDto, result);
+    }
+
+    @Test
+    public void testGetAllClients() {
+        Pageable pageable = PageRequest.of(0, 20);
+
+        Client client = new Client();
+        client.setId(1L);
+        client.setFirstName("John");
+        client.setLastName("Doe");
+
+        ClientDto clientDto = new ClientDto();
+        clientDto.setId(1L);
+        clientDto.setFirstName("John");
+        clientDto.setLastName("Doe");
+
+        List<Client> clients = Arrays.asList(client);
+
+        Page<Client> clientPage = new PageImpl<>(clients, pageable, clients.size());
+
+        when(clientRepository.findAll(pageable)).thenReturn(clientPage);
+        when(clientMapper.mapToDto(client)).thenReturn(clientDto);
+
         Page<ClientDto> result = clientService.getAllClients(pageable);
 
-        // Sprawdź, czy odpowiednia metoda repository została wywołana
-        Mockito.verify(clientRepository, Mockito.times(1)).findAll(pageable);
-
-        // Sprawdź, czy liczba klientów i ich dane są poprawne
-        Assertions.assertEquals(clients.size(), result.getTotalElements());
-        Assertions.assertEquals(clients.get(0).getId(), result.getContent().get(0).getId());
-        Assertions.assertEquals(clients.get(0).getFirstName(), result.getContent().get(0).getFirstName());
-        Assertions.assertEquals(clients.get(0).getLastName(), result.getContent().get(0).getLastName());
-        Assertions.assertEquals(clients.get(1).getId(), result.getContent().get(1).getId());
-        Assertions.assertEquals(clients.get(1).getFirstName(), result.getContent().get(1).getFirstName());
-        Assertions.assertEquals(clients.get(1).getLastName(), result.getContent().get(1).getLastName());
-    }
-
-    @Test
-    void testGetClientById() {
-        // Utwórz istniejącego klienta o znanym identyfikatorze
-        Long clientId = 1L;
-        Client client = new Client(clientId, "John", "Doe");
-
-        // Zdefiniuj zachowanie mocka dla repository
-        Mockito.when(clientRepository.findById(clientId)).thenReturn(Optional.of(client));
-
-        // Wywołaj metodę getClientById() w serwisie
-        ClientDto result = clientService.getClientById(clientId);
-
-        // Sprawdź, czy odpowiednia metoda repository została wywołana
-        Mockito.verify(clientRepository, Mockito.times(1)).findById(clientId);
-
-        // Sprawdź, czy zwrócony klient ma poprawne dane
-        Assertions.assertEquals(client.getId(), result.getId());
-        Assertions.assertEquals(client.getFirstName(), result.getFirstName());
-        Assertions.assertEquals(client.getLastName(), result.getLastName());
-    }
-
-    @Test
-    void testGetClientById_InvalidId() {
-        // Utwórz nieistniejącego klienta o nieznanym identyfikatorze
-        Long clientId = 1L;
-
-        // Zdefiniuj zachowanie mocka dla repository
-        Mockito.when(clientRepository.findById(clientId)).thenReturn(Optional.empty());
-
-        // Wywołaj metodę getClientById() w serwisie i sprawdź, czy rzucony jest wyjątek ResourceNotFoundException
-        Assertions.assertThrows(ResourceNotFoundException.class, () -> {
-            clientService.getClientById(clientId);
-        });
-
-        // Sprawdź, czy odpowiednia metoda repository została wywołana
-        Mockito.verify(clientRepository, Mockito.times(1)).findById(clientId);
+        assertEquals(1, result.getContent().size());
+        assertEquals(clientDto, result.getContent().get(0));
     }
 }

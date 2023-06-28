@@ -9,47 +9,58 @@ import com.example.library.rental.model.CreateRentalCommand;
 import com.example.library.rental.model.Rental;
 import com.example.library.rental.model.RentalDto;
 import com.example.library.rental.model.RentalMapper;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import jakarta.transaction.Transactional;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
+@AllArgsConstructor
 @Service
 public class RentalService {
 
-    @Autowired
     private RentalRepository rentalRepository;
 
-    @Autowired
     private ClientRepository clientRepository;
 
-    @Autowired
     private BookRepository bookRepository;
 
-    @Autowired
     private RentalMapper rentalMapper;
 
+    @Transactional
     public RentalDto createRental(CreateRentalCommand createRentalCommand) {
         Client client = clientRepository.findById(createRentalCommand.getClientId())
                 .orElseThrow(() -> new ResourceNotFoundException("Client", "id", createRentalCommand.getClientId()));
         Book book = bookRepository.findById(createRentalCommand.getBookId())
                 .orElseThrow(() -> new ResourceNotFoundException("Book", "id", createRentalCommand.getBookId()));
+
+        if (!book.isAvailable()) {
+            throw new IllegalStateException("Book with id " + book.getId() + " is not available");
+        }
+
+        List<Rental> rentalsInGivenPeriod = rentalRepository
+                .findByBookIdAndStartLessThanEqualAndEndGreaterThanEqual(
+                        book.getId(), createRentalCommand.getEnd(), createRentalCommand.getStart());
+
+        if (!rentalsInGivenPeriod.isEmpty()) {
+            throw new IllegalStateException("Book with id " + book.getId() + " is not available in the given period");
+        }
+
         Rental rental = new Rental();
         rental.setClient(client);
         rental.setBook(book);
         rental.setStart(createRentalCommand.getStart());
         rental.setEnd(createRentalCommand.getEnd());
         rental.setReturned(false);
+
         rental = rentalRepository.save(rental);
+
         return rentalMapper.mapToDto(rental);
     }
 
     public RentalDto returnRental(Long id) {
-        Rental rental = rentalRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Rental", "id", id));
+        Rental rental = rentalRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Rental", "id", id));
         rental.setReturned(true);
         rental = rentalRepository.save(rental);
         return rentalMapper.mapToDto(rental);
@@ -57,8 +68,6 @@ public class RentalService {
 
     public List<RentalDto> getClientRentals(Long clientId) {
         List<Rental> rentals = rentalRepository.findByClientId(clientId);
-        return rentals.stream()
-                .map(rentalMapper::mapToDto)
-                .collect(Collectors.toList());
+        return rentals.stream().map(rentalMapper::mapToDto).collect(Collectors.toList());
     }
 }

@@ -1,7 +1,10 @@
 package com.example.library.book.model;
 
+import com.example.library.rental.model.Rental;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.util.List;
 
 @Getter
 @Setter
@@ -14,8 +17,14 @@ public class Book {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     private String title;
+
     private String author;
+
     private boolean available;
+
+    @OneToMany(mappedBy = "book")
+    private List<Rental> rentals;
 
 }

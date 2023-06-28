@@ -1,7 +1,10 @@
 package com.example.library.client.model;
 
+import com.example.library.rental.model.Rental;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.util.List;
 
 @Getter
 @Setter
@@ -21,4 +24,9 @@ public class Client {
 
     @Column(nullable = false)
     private String lastName;
+
+    @OneToMany(mappedBy = "client")
+    private List<Rental> rentals;
+
+
 }

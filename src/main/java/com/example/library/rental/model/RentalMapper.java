@@ -16,14 +16,4 @@ public class RentalMapper {
         return dto;
     }
 
-    public Rental mapToEntity(RentalDto rentalDto) {
-        Rental rental = new Rental();
-        // Pamiętaj, że musisz ustawić Klienta i Książkę, nie tylko ich identyfikatory.
-        // Prawdopodobnie będziesz musiał użyć repozytoriów lub serwisów do pobrania tych encji.
-        // W tym przypadku pominąłem te kroki, ponieważ są one specyficzne dla twojego konkretnego projektu.
-        rental.setStart(rentalDto.getStart());
-        rental.setEnd(rentalDto.getEnd());
-        rental.setReturned(rentalDto.isReturned());
-        return rental;
-    }
 }
