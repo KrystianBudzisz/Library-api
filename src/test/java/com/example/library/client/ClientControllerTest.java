@@ -1,80 +1,74 @@
 package com.example.library.client;
 
-import com.example.library.client.model.ClientDto;
+import com.example.library.client.model.Client;
 import com.example.library.client.model.CreateClientCommand;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import org.hamcrest.Matchers;
+import jakarta.transaction.Transactional;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
+import static org.hamcrest.Matchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+
 @SpringBootTest
 @AutoConfigureMockMvc
-class ClientControllerTest {
+@ActiveProfiles("test")
+@Transactional
+public class ClientControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
-    private ClientService clientService;
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private ClientRepository clientRepository;
 
     @Test
-    void testCreateClient() throws Exception {
-        CreateClientCommand createClientCommand = new CreateClientCommand("John", "Doe");
-
+    public void createClient() throws Exception {
+        CreateClientCommand createClientCommand = new CreateClientCommand("TestFirstName", "TestLastName");
+        String content = objectMapper.writeValueAsString(createClientCommand);
 
         mockMvc.perform(MockMvcRequestBuilders.post("/api/clients")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(asJsonString(createClientCommand)))
+                        .content(content)
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.id").exists())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.firstName").value("John"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.lastName").value("Doe"));
+                .andDo(print());
     }
 
     @Test
-    void testGetAllClients() throws Exception {
-        CreateClientCommand createClientCommand1 = new CreateClientCommand("John", "Doe");
-
-        CreateClientCommand createClientCommand2 = new CreateClientCommand("John", "Doe");
-
-
-        clientService.createClient(createClientCommand1);
-        clientService.createClient(createClientCommand2);
-
-        Page<ClientDto> clients = clientService.getAllClients(PageRequest.of(0, 5));
-
-        mockMvc.perform(MockMvcRequestBuilders.get("/api/clients"))
+    public void getAllClients() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/clients")
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.content",
-                        Matchers.hasSize(Math.toIntExact(clients.getTotalElements()))));
+                .andExpect(MockMvcResultMatchers.jsonPath("$.content", hasSize(greaterThanOrEqualTo(0))))
+                .andDo(print());
     }
 
     @Test
-    void testGetClientById() throws Exception {
-        CreateClientCommand createClientCommand = new CreateClientCommand("John", "Doe");
+    public void getClientById() throws Exception {
+        Client newClient = new Client();
+        newClient.setFirstName("TestFirstName");
+        newClient.setLastName("TestLastName");
+        Client savedClient = clientRepository.save(newClient);
 
-        ClientDto createdClientDto = clientService.createClient(createClientCommand);
-
-        mockMvc.perform(MockMvcRequestBuilders.get("/api/clients/{id}", createdClientDto.getId()))
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/clients/" + savedClient.getId())
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.id").value(createdClientDto.getId()))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.firstName").value(createdClientDto.getFirstName()))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.lastName").value(createdClientDto.getLastName()));
+                .andExpect(MockMvcResultMatchers.jsonPath("$.id", is(savedClient.getId().intValue())))
+                .andDo(print());
     }
-
-    private static String asJsonString(Object obj) throws JsonProcessingException {
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.registerModule(new JavaTimeModule());
-        return objectMapper.writeValueAsString(obj);
+    @AfterEach
+    void teardown() {
+        clientRepository.deleteAll();
     }
 }

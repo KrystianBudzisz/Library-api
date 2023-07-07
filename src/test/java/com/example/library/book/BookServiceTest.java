@@ -21,7 +21,7 @@ import java.util.Optional;
 
 
 @SpringBootTest
-class BookServiceTest {
+public class BookServiceTest {
 
     @Autowired
     private BookService bookService;
@@ -103,16 +103,14 @@ class BookServiceTest {
         book2.setAvailable(true);
         books.add(book2);
 
-        List<BookDto> expectedBookDtos = books.stream()
-                .map(book -> {
-                    BookDto bookDto = new BookDto();
-                    bookDto.setId(book.getId());
-                    bookDto.setTitle(book.getTitle());
-                    bookDto.setAuthor(book.getAuthor());
-                    bookDto.setAvailable(book.isAvailable());
-                    return bookDto;
-                })
-                .toList();
+        List<BookDto> expectedBookDtos = books.stream().map(book -> {
+            BookDto bookDto = new BookDto();
+            bookDto.setId(book.getId());
+            bookDto.setTitle(book.getTitle());
+            bookDto.setAuthor(book.getAuthor());
+            bookDto.setAvailable(book.isAvailable());
+            return bookDto;
+        }).toList();
 
         Page<Book> bookPage = new PageImpl<>(books);
 

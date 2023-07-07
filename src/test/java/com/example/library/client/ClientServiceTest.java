@@ -35,7 +35,7 @@ public class ClientServiceTest {
 
     @Test
     public void testCreateClient() {
-        CreateClientCommand createClientCommand = new CreateClientCommand("John","Doe");
+        CreateClientCommand createClientCommand = new CreateClientCommand("John", "Doe");
 
 
         Client client = new Client();

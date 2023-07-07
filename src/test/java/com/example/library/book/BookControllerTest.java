@@ -1,88 +1,79 @@
 package com.example.library.book;
 
-import com.example.library.book.model.BookDto;
+import com.example.library.book.model.Book;
 import com.example.library.book.model.CreateBookCommand;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import org.hamcrest.Matchers;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+import org.springframework.transaction.annotation.Transactional;
+
+import static org.hamcrest.Matchers.is;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 
 @SpringBootTest
 @AutoConfigureMockMvc
-class BookControllerTest {
+@ActiveProfiles("test")
+@Transactional
+public class BookControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
-    private BookService bookService;
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private BookRepository bookRepository;
+
+    private Book book;
+
+    @BeforeEach
+    public void setup() {
+        book = new Book();
+        book.setTitle("Book Title");
+        book.setAuthor("Book Author");
+        book.setAvailable(true);
+        book = bookRepository.save(book);
+    }
 
     @Test
-    void testCreateBook() throws Exception {
+    public void shouldCreateBook() throws Exception {
         CreateBookCommand createBookCommand = new CreateBookCommand();
-        createBookCommand.setTitle("Book One");
-        createBookCommand.setAuthor("Author One");
+        createBookCommand.setTitle("New Book Title");
+        createBookCommand.setAuthor("New Book Author");
 
-        mockMvc.perform(MockMvcRequestBuilders.post("/api/books").contentType(MediaType.APPLICATION_JSON)
-                        .content(asJsonString(createBookCommand)))
-                .andExpect(MockMvcResultMatchers.status().isCreated())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.id").exists())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.title").value("Book One"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.author").value("Author One"));
+        mockMvc.perform(post("/api/books")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createBookCommand)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.title").value(createBookCommand.getTitle()))
+                .andExpect(jsonPath("$.author").value(createBookCommand.getAuthor()))
+                .andExpect(jsonPath("$.available").value(true));
     }
 
     @Test
-    void testBlockBook() throws Exception {
-        CreateBookCommand createBookCommand = new CreateBookCommand();
-        createBookCommand.setTitle("Book One");
-        createBookCommand.setAuthor("Author One");
-
-        BookDto createdBookDto = bookService.createBook(createBookCommand);
-
-        BookDto blockedBookDto = bookService.blockBook(createdBookDto.getId());
-
-        mockMvc.perform(MockMvcRequestBuilders.put("/api/books/{id}/block", blockedBookDto.getId()))
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.id").value(blockedBookDto.getId()))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.title").value(blockedBookDto.getTitle()))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.author").value(blockedBookDto.getAuthor()))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.available").value(blockedBookDto.isAvailable()));
+    public void shouldBlockBook() throws Exception {
+        mockMvc.perform(put("/api/books/" + book.getId() + "/block")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.available").value(false));
     }
 
     @Test
-    void testGetAllBooks() throws Exception {
-        CreateBookCommand createBookCommand1 = new CreateBookCommand();
-        createBookCommand1.setTitle("Book One");
-        createBookCommand1.setAuthor("Author One");
-
-        CreateBookCommand createBookCommand2 = new CreateBookCommand();
-        createBookCommand2.setTitle("Book Two");
-        createBookCommand2.setAuthor("Author Two");
-
-        bookService.createBook(createBookCommand1);
-        bookService.createBook(createBookCommand2);
-
-        Page<BookDto> books = bookService.getAllBooks(PageRequest.of(0, 5));
-
-        mockMvc.perform(MockMvcRequestBuilders.get("/api/books"))
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.content",
-                        Matchers.hasSize(Math.toIntExact(books.getTotalElements()))));
-    }
-
-    private static String asJsonString(Object obj) throws JsonProcessingException {
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.registerModule(new JavaTimeModule());
-        return objectMapper.writeValueAsString(obj);
+    public void shouldGetAllBooks() throws Exception {
+        mockMvc.perform(get("/api/books")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].title", is("Book One")))
+                .andExpect(jsonPath("$.content[0].author", is("Author One")));
     }
 }

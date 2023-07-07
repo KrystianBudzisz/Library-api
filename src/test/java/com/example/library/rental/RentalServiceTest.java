@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Optional;
 
 @SpringBootTest
-class RentalServiceTest {
+public class RentalServiceTest {
 
     @Autowired
     private RentalService rentalService;
