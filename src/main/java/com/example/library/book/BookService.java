@@ -7,12 +7,11 @@ import com.example.library.book.model.BookMapper;
 import com.example.library.book.model.CreateBookCommand;
 import com.example.library.exception.DuplicateResourceException;
 import com.example.library.exception.ResourceNotFoundException;
+import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
-import java.util.Optional;
 
 @AllArgsConstructor
 @Service
@@ -23,11 +22,13 @@ public class BookService {
 
     private BookMapper bookMapper;
 
+    @Transactional
     public BookDto createBook(CreateBookCommand createBookCommand) {
-        Optional<Book> existingBook = bookRepository.findByTitle(createBookCommand.getTitle());
-        if (existingBook.isPresent()) {
-            throw new DuplicateResourceException("Book with title '" + createBookCommand.getTitle() + "' already exists");
-        }
+        bookRepository.findByTitle(createBookCommand.getTitle())
+                .ifPresent(book -> {
+                    throw new DuplicateResourceException("Book with title '" + createBookCommand.getTitle() + "' already exists");
+                });
+
 
         Book book = new Book();
         book.setTitle(createBookCommand.getTitle());
@@ -37,12 +38,11 @@ public class BookService {
         return bookMapper.mapToDto(book);
     }
 
-
+    @Transactional
     public BookDto blockBook(Long id) {
+        bookRepository.blockBook(id);
         Book book = bookRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Book", "id", id));
-        book.setAvailable(false);
-        book = bookRepository.save(book);
         return bookMapper.mapToDto(book);
     }
 

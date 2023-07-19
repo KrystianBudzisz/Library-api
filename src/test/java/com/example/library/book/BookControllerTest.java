@@ -12,9 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,7 +26,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Transactional
 public class BookControllerTest {
 
     @Autowired
@@ -74,7 +71,6 @@ public class BookControllerTest {
         assertEquals(createBookCommand.getTitle(), savedBook.get().getTitle());
         assertEquals(createBookCommand.getAuthor(), savedBook.get().getAuthor());
         assertTrue(savedBook.get().isAvailable());
-
     }
 
 
@@ -85,28 +81,22 @@ public class BookControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.available").value(false));
 
-
         Optional<Book> blockedBook = bookRepository.findById(book.getId());
         assertTrue(blockedBook.isPresent());
         assertFalse(blockedBook.get().isAvailable());
     }
 
-
     @Test
     public void shouldGetAllBooks() throws Exception {
-
-
         mockMvc.perform(get("/api/books")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content.length()", is(3)))
-                .andExpect(jsonPath("$.content[2].title", is(book.getTitle())))
-                .andExpect(jsonPath("$.content[2].author", is(book.getAuthor())));
-
+                .andExpect(jsonPath("$.content.length()", is(1)))
+                .andExpect(jsonPath("$.content[0].title", is(book.getTitle())))
+                .andExpect(jsonPath("$.content[0].author", is(book.getAuthor())));
 
         List<Book> booksInDb = bookRepository.findAll();
-        assertEquals(3, booksInDb.size());
-        assertTrue(booksInDb.containsAll(Arrays.asList(book)));
+        assertEquals(1, booksInDb.size());
     }
 
 

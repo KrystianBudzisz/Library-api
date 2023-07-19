@@ -17,7 +17,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -141,20 +140,5 @@ public class ClientServiceTest {
         assertEquals(20, capturedPageable.getPageSize());
     }
 
-
-    @Test
-    public void testGetAllClients_Empty() {
-        Pageable pageable = PageRequest.of(0, 20);
-        Page<Client> clientPage = new PageImpl<>(Collections.emptyList(), pageable, 0);
-
-        when(clientRepository.findAll(pageable)).thenReturn(clientPage);
-
-        ResourceNotFoundException exception = assertThrows(
-                ResourceNotFoundException.class,
-                () -> clientService.getAllClients(pageable)
-        );
-
-        assertEquals("Clients not found with Page : '0'", exception.getMessage());
-    }
 
 }

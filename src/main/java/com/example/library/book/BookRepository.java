@@ -4,6 +4,7 @@ import com.example.library.book.model.Book;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -16,4 +17,7 @@ public interface BookRepository extends JpaRepository<Book, Long> {
 
     Optional<Book> findByTitle(String title);
 
+    @Modifying
+    @Query("UPDATE Book b SET b.available = false WHERE b.id = :id")
+    void blockBook(@Param("id") Long id);
 }

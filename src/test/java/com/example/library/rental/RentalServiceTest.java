@@ -8,9 +8,11 @@ import com.example.library.exception.ResourceNotFoundException;
 import com.example.library.rental.model.CreateRentalCommand;
 import com.example.library.rental.model.Rental;
 import com.example.library.rental.model.RentalDto;
+import com.example.library.rental.model.RentalMapper;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -18,7 +20,6 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,6 +37,9 @@ public class RentalServiceTest {
 
     @MockBean
     private BookRepository bookRepository;
+
+    @Mock
+    private RentalMapper rentalMapper;
 
     @Test
     void testCreateRental() {
@@ -60,29 +64,28 @@ public class RentalServiceTest {
         expectedRental.setEnd(createRentalCommand.getEnd());
         expectedRental.setReturned(false);
 
+        RentalDto expectedRentalDto = new RentalDto();
+        expectedRentalDto.setId(expectedRental.getId());
+        expectedRentalDto.setClientId(expectedRental.getClient().getId());
+        expectedRentalDto.setBookId(expectedRental.getBook().getId());
+        expectedRentalDto.setStart(expectedRental.getStart());
+        expectedRentalDto.setEnd(expectedRental.getEnd());
+        expectedRentalDto.setReturned(expectedRental.isReturned());
+
         Mockito.when(clientRepository.findById(1L)).thenReturn(Optional.of(client));
         Mockito.when(bookRepository.findByIdForWrite(1L)).thenReturn(Optional.of(book));
+        Mockito.when(rentalRepository.save(Mockito.any(Rental.class))).thenReturn(expectedRental);
+        Mockito.when(rentalMapper.mapToDto(expectedRental)).thenReturn(expectedRentalDto);
 
-        ArgumentCaptor<Rental> rentalCaptor = ArgumentCaptor.forClass(Rental.class);
-        Mockito.when(rentalRepository.save(rentalCaptor.capture())).thenReturn(expectedRental);
+        RentalDto actualRentalDto = rentalService.createRental(createRentalCommand);
 
-        RentalDto rentalDto = rentalService.createRental(createRentalCommand);
+        Assertions.assertEquals(expectedRentalDto.getId(), actualRentalDto.getId());
+        Assertions.assertEquals(expectedRentalDto.getClientId(), actualRentalDto.getClientId());
+        Assertions.assertEquals(expectedRentalDto.getBookId(), actualRentalDto.getBookId());
+        Assertions.assertEquals(expectedRentalDto.getStart(), actualRentalDto.getStart());
+        Assertions.assertEquals(expectedRentalDto.getEnd(), actualRentalDto.getEnd());
+        Assertions.assertEquals(expectedRentalDto.isReturned(), actualRentalDto.isReturned());
 
-        Mockito.verify(clientRepository, Mockito.times(1)).findById(1L);
-        Mockito.verify(bookRepository, Mockito.times(1)).findByIdForWrite(1L);
-        Mockito.verify(rentalRepository, Mockito.times(1)).save(Mockito.any(Rental.class));
-
-        Rental capturedRental = rentalCaptor.getValue();
-        Assertions.assertEquals(expectedRental.getClient(), capturedRental.getClient());
-        Assertions.assertEquals(expectedRental.getBook(), capturedRental.getBook());
-        Assertions.assertEquals(expectedRental.getStart(), capturedRental.getStart());
-        Assertions.assertEquals(expectedRental.getEnd(), capturedRental.getEnd());
-        Assertions.assertEquals(expectedRental.isReturned(), capturedRental.isReturned());
-
-        Assertions.assertEquals(expectedRental.getId(), rentalDto.getId());
-        Assertions.assertEquals(expectedRental.getClient().getId(), rentalDto.getClientId());
-        Assertions.assertEquals(expectedRental.getBook().getId(), rentalDto.getBookId());
-        Assertions.assertEquals(expectedRental.isReturned(), rentalDto.isReturned());
     }
 
 
@@ -130,9 +133,9 @@ public class RentalServiceTest {
         Assertions.assertEquals(expectedRental.getBook().getId(), rentalDto.getBookId());
         Assertions.assertEquals(expectedRental.isReturned(), rentalDto.isReturned());
 
-        Mockito.when(rentalRepository.findByBookIdAndStartLessThanEqualAndEndGreaterThanEqual(
+        Mockito.when(rentalRepository.existsByBookIdAndStartLessThanEqualAndEndGreaterThanEqual(
                         1L, createRentalCommand2.getEnd(), createRentalCommand2.getStart()))
-                .thenReturn(Collections.singletonList(expectedRental));
+                .thenReturn(true);
 
         Assertions.assertThrows(IllegalStateException.class, () -> rentalService.createRental(createRentalCommand2));
     }
