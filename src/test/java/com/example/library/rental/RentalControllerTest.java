@@ -7,7 +7,6 @@ import com.example.library.client.model.Client;
 import com.example.library.rental.model.CreateRentalCommand;
 import com.example.library.rental.model.Rental;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,7 +22,8 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.hamcrest.Matchers.hasSize;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -31,7 +31,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Transactional
 class RentalControllerTest {
 
     private static Rental rental;
@@ -125,7 +124,7 @@ class RentalControllerTest {
 
     @Test
     void shouldGetClientRentals() throws Exception {
-        mockMvc.perform(get("/api/rentals/client/{clientId}", client.getId()))
+        mockMvc.perform(get("/api/rentals/client/{id}/rentals", client.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].id").value(rental.getId()))

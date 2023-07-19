@@ -28,9 +28,10 @@ public class RentalController {
         return new ResponseEntity<>(returnedRental, HttpStatus.OK);
     }
 
-    @GetMapping("/client/{clientId}")
-    public ResponseEntity<List<RentalDto>> getClientRentals(@PathVariable Long clientId) {
+    @GetMapping("/client/{id}/rentals")
+    public ResponseEntity<List<RentalDto>> getClientRentals(@PathVariable("id") Long clientId) {
         List<RentalDto> rentals = rentalService.getClientRentals(clientId);
         return new ResponseEntity<>(rentals, HttpStatus.OK);
     }
+
 }

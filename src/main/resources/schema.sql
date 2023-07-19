@@ -18,6 +18,6 @@ CREATE TABLE IF NOT EXISTS rentals (
   end_date DATE,
   returned BOOLEAN NOT NULL,
    version INTEGER NOT NULL,
-  FOREIGN KEY (client_id) REFERENCES clients(id),
-  FOREIGN KEY (book_id) REFERENCES books(id)
+  FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE,
+  FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
 );

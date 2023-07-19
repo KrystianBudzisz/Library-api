@@ -9,8 +9,8 @@ import com.example.library.rental.model.CreateRentalCommand;
 import com.example.library.rental.model.Rental;
 import com.example.library.rental.model.RentalDto;
 import com.example.library.rental.model.RentalMapper;
+import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
-import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -28,7 +28,7 @@ public class RentalService {
 
     private RentalMapper rentalMapper;
 
-
+    @Transactional
     public RentalDto createRental(CreateRentalCommand createRentalCommand) {
         Client client = clientRepository.findById(createRentalCommand.getClientId())
                 .orElseThrow(() -> new ResourceNotFoundException("Client", "id", createRentalCommand.getClientId()));
@@ -38,12 +38,11 @@ public class RentalService {
         if (!book.isAvailable()) {
             throw new IllegalStateException("Book with id " + book.getId() + " is not available");
         }
-
-        List<Rental> rentalsInGivenPeriod = rentalRepository
-                .findByBookIdAndStartLessThanEqualAndEndGreaterThanEqual(
+        boolean rentalsInGivenPeriod = rentalRepository
+                .existsByBookIdAndStartLessThanEqualAndEndGreaterThanEqual(
                         book.getId(), createRentalCommand.getEnd(), createRentalCommand.getStart());
 
-        if (!rentalsInGivenPeriod.isEmpty()) {
+        if (rentalsInGivenPeriod) {
             throw new IllegalStateException("Book with id " + book.getId() + " is not available in the given period");
         }
 
@@ -53,12 +52,7 @@ public class RentalService {
         rental.setStart(createRentalCommand.getStart());
         rental.setEnd(createRentalCommand.getEnd());
         rental.setReturned(false);
-
-        try {
-            rental = rentalRepository.save(rental);
-        } catch (OptimisticLockingFailureException ex) {
-            throw new IllegalStateException("Cannot create rental due to concurrent modification.", ex);
-        }
+        rental = rentalRepository.save(rental);
 
         return rentalMapper.mapToDto(rental);
     }

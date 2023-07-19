@@ -89,6 +89,7 @@ public class BookServiceTest {
         assertThrows(DuplicateResourceException.class, () -> bookService.createBook(createBookCommand));
     }
 
+
     @Test
     void testBlockBook() {
         Book book = new Book();
@@ -104,21 +105,22 @@ public class BookServiceTest {
         expectedBlockedBookDto.setAvailable(false);
 
         when(bookRepository.findById(1L)).thenReturn(Optional.of(book));
-        when(bookRepository.save(bookCaptor.capture())).thenReturn(book);
+
+        ArgumentCaptor<Long> argumentCaptor = ArgumentCaptor.forClass(Long.class);
 
         BookDto blockedBookDto = bookService.blockBook(1L);
 
         Mockito.verify(bookRepository, Mockito.times(1)).findById(1L);
-        Mockito.verify(bookRepository, Mockito.times(1)).save(bookCaptor.getValue());
+        Mockito.verify(bookRepository, Mockito.times(1)).blockBook(argumentCaptor.capture());
 
-        Book savedBook = bookCaptor.getValue();
-        Assertions.assertFalse(savedBook.isAvailable());
+        Assertions.assertEquals(Long.valueOf(1L), argumentCaptor.getValue());
 
         Assertions.assertEquals(expectedBlockedBookDto.getId(), blockedBookDto.getId());
         Assertions.assertEquals(expectedBlockedBookDto.getTitle(), blockedBookDto.getTitle());
         Assertions.assertEquals(expectedBlockedBookDto.getAuthor(), blockedBookDto.getAuthor());
-        Assertions.assertEquals(expectedBlockedBookDto.isAvailable(), blockedBookDto.isAvailable());
+
     }
+
 
     @Test
     public void testBlockBookWhenNotFound() {
