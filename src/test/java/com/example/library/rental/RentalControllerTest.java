@@ -104,6 +104,9 @@ class RentalControllerTest {
         Optional<Book> savedBook = bookRepository.findById(book.getId());
         assertTrue(savedBook.isPresent());
 
+        List<Rental> rentalsForClient = rentalRepository.findByClientId(client.getId());
+        assertEquals(2, rentalsForClient.size());
+
     }
 
     @Test

@@ -24,10 +24,11 @@ public class BookController {
     }
 
     @PutMapping("/{id}/block")
-    public ResponseEntity<BookDto> blockBook(@PathVariable Long id) {
-        BookDto blockedBook = bookService.blockBook(id);
-        return new ResponseEntity<>(blockedBook, HttpStatus.OK);
+    public ResponseEntity<Void> blockBook(@PathVariable Long id) {
+        bookService.blockBook(id);
+        return ResponseEntity.ok().build();
     }
+
 
     @GetMapping
     public ResponseEntity<Page<BookDto>> getAllBooks(Pageable pageable) {

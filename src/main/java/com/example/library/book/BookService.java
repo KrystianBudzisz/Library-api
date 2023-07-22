@@ -9,6 +9,7 @@ import com.example.library.exception.DuplicateResourceException;
 import com.example.library.exception.ResourceNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -24,27 +25,33 @@ public class BookService {
 
     @Transactional
     public BookDto createBook(CreateBookCommand createBookCommand) {
-        bookRepository.findByTitle(createBookCommand.getTitle())
-                .ifPresent(book -> {
-                    throw new DuplicateResourceException("Book with title '" + createBookCommand.getTitle() + "' already exists");
-                });
-
+        if (bookRepository.existsByTitle(createBookCommand.getTitle())) {
+            throw new DuplicateResourceException("Book with title '" + createBookCommand.getTitle() + "' already exists");
+        }
 
         Book book = new Book();
         book.setTitle(createBookCommand.getTitle());
         book.setAuthor(createBookCommand.getAuthor());
         book.setAvailable(true);
-        book = bookRepository.save(book);
+
+        try {
+            book = bookRepository.save(book);
+        } catch (DataIntegrityViolationException ex) {
+            throw new DuplicateResourceException("Book with title '" + createBookCommand.getTitle() + "' already exists");
+        }
+
         return bookMapper.mapToDto(book);
     }
 
+
     @Transactional
-    public BookDto blockBook(Long id) {
+    public void blockBook(Long id) {
+        if (!bookRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Book", "id", id);
+        }
         bookRepository.blockBook(id);
-        Book book = bookRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Book", "id", id));
-        return bookMapper.mapToDto(book);
     }
+
 
     public Page<BookDto> getAllBooks(Pageable pageable) {
         return bookRepository.findAll(pageable).map(bookMapper::mapToDto);

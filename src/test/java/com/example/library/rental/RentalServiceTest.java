@@ -245,5 +245,115 @@ public class RentalServiceTest {
         Assertions.assertEquals(rentals.get(1).isReturned(), rentalDtos.get(1).isReturned());
     }
 
+    @Test
+    void testCreateRental_whenDatesOverlapFromStart_thenThrowsException() {
+        setupDefaultRentalCreationMocks();
+
+        CreateRentalCommand newRentalCommand = new CreateRentalCommand();
+        newRentalCommand.setClientId(1L);
+        newRentalCommand.setBookId(1L);
+        newRentalCommand.setStart(LocalDate.now().minusDays(3));
+        newRentalCommand.setEnd(LocalDate.now().plusDays(2));
+
+        Mockito.when(rentalRepository.existsByBookIdAndStartLessThanEqualAndEndGreaterThanEqual(
+                        1L, newRentalCommand.getEnd(), newRentalCommand.getStart()))
+                .thenReturn(true);
+
+        Assertions.assertThrows(IllegalStateException.class, () -> rentalService.createRental(newRentalCommand));
+    }
+
+    @Test
+    void testCreateRental_whenDatesOverlapFromEnd_thenThrowsException() {
+        setupDefaultRentalCreationMocks();
+
+        CreateRentalCommand newRentalCommand = new CreateRentalCommand();
+        newRentalCommand.setClientId(1L);
+        newRentalCommand.setBookId(1L);
+        newRentalCommand.setStart(LocalDate.now().minusDays(7));
+        newRentalCommand.setEnd(LocalDate.now().plusDays(3));
+
+        Mockito.when(rentalRepository.existsByBookIdAndStartLessThanEqualAndEndGreaterThanEqual(
+                        1L, newRentalCommand.getEnd(), newRentalCommand.getStart()))
+                .thenReturn(true);
+
+        Assertions.assertThrows(IllegalStateException.class, () -> rentalService.createRental(newRentalCommand));
+    }
+
+    @Test
+    void testCreateRental_whenDatesFullyOverlap_thenThrowsException() {
+        setupDefaultRentalCreationMocks();
+
+        CreateRentalCommand newRentalCommand = new CreateRentalCommand();
+        newRentalCommand.setClientId(1L);
+        newRentalCommand.setBookId(1L);
+        newRentalCommand.setStart(LocalDate.now().minusDays(2));
+        newRentalCommand.setEnd(LocalDate.now().plusDays(5));
+
+        Mockito.when(rentalRepository.existsByBookIdAndStartLessThanEqualAndEndGreaterThanEqual(
+                        1L, newRentalCommand.getEnd(), newRentalCommand.getStart()))
+                .thenReturn(true);
+
+        Assertions.assertThrows(IllegalStateException.class, () -> rentalService.createRental(newRentalCommand));
+    }
+
+
+    @Test
+    void testBookRentedBeforeAndReturnedDuringRequestedPeriod() {
+        setupDefaultRentalCreationMocks();
+
+        Mockito.when(rentalRepository.existsByBookIdAndStartLessThanEqualAndEndGreaterThanEqual(
+                        1L, LocalDate.of(2023, 1, 10), LocalDate.of(2023, 1, 5)))
+                .thenReturn(true);
+
+        Assertions.assertThrows(IllegalStateException.class, () -> rentalService.createRental(new CreateRentalCommand(1L, 1L, LocalDate.of(2023, 1, 5), LocalDate.of(2023, 1, 10))));
+    }
+
+    @Test
+    void testBookRentedAndReturnedDuringRequestedPeriod() {
+        setupDefaultRentalCreationMocks();
+
+        Mockito.when(rentalRepository.existsByBookIdAndStartLessThanEqualAndEndGreaterThanEqual(
+                        1L, LocalDate.of(2023, 1, 10), LocalDate.of(2023, 1, 1)))
+                .thenReturn(true);
+
+        Assertions.assertThrows(IllegalStateException.class, () -> rentalService.createRental(new CreateRentalCommand(1L, 1L, LocalDate.of(2023, 1, 1), LocalDate.of(2023, 1, 10))));
+    }
+
+    @Test
+    void testBookRentedDuringAndReturnedAfterRequestedPeriod() {
+        setupDefaultRentalCreationMocks();
+
+        Mockito.when(rentalRepository.existsByBookIdAndStartLessThanEqualAndEndGreaterThanEqual(
+                        1L, LocalDate.of(2023, 1, 10), LocalDate.of(2023, 1, 1)))
+                .thenReturn(true);
+
+        Assertions.assertThrows(IllegalStateException.class, () -> rentalService.createRental(new CreateRentalCommand(1L, 1L, LocalDate.of(2023, 1, 1), LocalDate.of(2023, 1, 10))));
+    }
+
+
+    @Test
+    void testBookRentedBeforeAndReturnedAfterRequestedPeriod() {
+        setupDefaultRentalCreationMocks();
+
+        Mockito.when(rentalRepository.existsByBookIdAndStartLessThanEqualAndEndGreaterThanEqual(
+                        1L, LocalDate.of(2023, 1, 10), LocalDate.of(2023, 1, 5)))
+                .thenReturn(true);
+
+        Assertions.assertThrows(IllegalStateException.class, () -> rentalService.createRental(new CreateRentalCommand(1L, 1L, LocalDate.of(2023, 1, 5), LocalDate.of(2023, 1, 10))));
+    }
+
+
+    private void setupDefaultRentalCreationMocks() {
+        Client client = new Client();
+        client.setId(1L);
+
+        Book book = new Book();
+        book.setId(1L);
+        book.setAvailable(true);
+
+        Mockito.when(clientRepository.findById(1L)).thenReturn(Optional.of(client));
+        Mockito.when(bookRepository.findByIdForWrite(1L)).thenReturn(Optional.of(book));
+    }
+
 
 }
