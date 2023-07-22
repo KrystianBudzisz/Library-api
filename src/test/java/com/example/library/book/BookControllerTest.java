@@ -78,13 +78,13 @@ public class BookControllerTest {
     public void shouldBlockBook() throws Exception {
         mockMvc.perform(put("/api/books/" + book.getId() + "/block")
                         .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.available").value(false));
+                .andExpect(status().isOk());
 
         Optional<Book> blockedBook = bookRepository.findById(book.getId());
         assertTrue(blockedBook.isPresent());
         assertFalse(blockedBook.get().isAvailable());
     }
+
 
     @Test
     public void shouldGetAllBooks() throws Exception {

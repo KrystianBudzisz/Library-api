@@ -13,10 +13,14 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
     List<Rental> findByClientId(@Param("clientId") Long clientId);
 
 
-    @Query("SELECT CASE WHEN COUNT(r) > 0 THEN true ELSE false END FROM Rental r WHERE r.book.id = :bookId AND r.start <= :endDate AND r.end >= :startDate")
+    @Query("SELECT CASE WHEN COUNT(r) > 0 THEN true ELSE false END FROM Rental r WHERE r.book.id = :bookId AND " +
+            "(r.start <= :endDate AND r.end >= :startDate) OR " +
+            "(r.start >= :startDate AND r.end <= :endDate)")
     boolean existsByBookIdAndStartLessThanEqualAndEndGreaterThanEqual(
             @Param("bookId") Long bookId,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );
+
+
 }
