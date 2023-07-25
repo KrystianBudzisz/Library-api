@@ -19,4 +19,10 @@ public class GlobalExceptionHandler {
         return new ExceptionDto(exception.getMessage());
     }
 
+    @ExceptionHandler(DatabaseException.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ExceptionDto handleDatabaseException(DatabaseException exception) {
+        return new ExceptionDto(exception.getMessage());
+    }
+
 }

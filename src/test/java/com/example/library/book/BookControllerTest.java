@@ -58,6 +58,8 @@ public class BookControllerTest {
         createBookCommand.setTitle("New Book Title");
         createBookCommand.setAuthor("New Book Author");
 
+        int initialBookCount = bookRepository.findAll().size();
+
         mockMvc.perform(post("/api/books")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createBookCommand)))
@@ -66,11 +68,22 @@ public class BookControllerTest {
                 .andExpect(jsonPath("$.author").value(createBookCommand.getAuthor()))
                 .andExpect(jsonPath("$.available").value(true));
 
-        Optional<Book> savedBook = bookRepository.findByTitle(createBookCommand.getTitle());
+        List<Book> booksInDb = bookRepository.findAll();
+
+        assertEquals(initialBookCount + 1, booksInDb.size());
+
+        Optional<Book> savedBook = booksInDb.stream()
+                .filter(book -> book.getTitle().equals(createBookCommand.getTitle()))
+                .findFirst();
         assertTrue(savedBook.isPresent());
         assertEquals(createBookCommand.getTitle(), savedBook.get().getTitle());
         assertEquals(createBookCommand.getAuthor(), savedBook.get().getAuthor());
         assertTrue(savedBook.get().isAvailable());
+
+        long countBooks = booksInDb.stream()
+                .filter(book -> book.getTitle().equals(createBookCommand.getTitle()))
+                .count();
+        assertEquals(1, countBooks);
     }
 
 

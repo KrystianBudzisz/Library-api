@@ -4,8 +4,10 @@ package com.example.library.book;
 import com.example.library.book.model.Book;
 import com.example.library.book.model.BookDto;
 import com.example.library.book.model.CreateBookCommand;
+import com.example.library.exception.DatabaseException;
 import com.example.library.exception.DuplicateResourceException;
 import com.example.library.exception.ResourceNotFoundException;
+import jakarta.persistence.OptimisticLockException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -14,12 +16,14 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.util.ArrayList;
+import java.util.ConcurrentModificationException;
 import java.util.List;
 import java.util.Optional;
 
@@ -74,50 +78,33 @@ public class BookServiceTest {
     }
 
     @Test
-    public void testCreateBookWhenDuplicate() {
-        CreateBookCommand createBookCommand = new CreateBookCommand();
-        createBookCommand.setTitle("Book One");
-        createBookCommand.setAuthor("Author One");
+    void testBlockBook() {
+        Long bookId = 1L;
+        when(bookRepository.blockBook(bookId)).thenReturn(1);
 
-        when(bookRepository.existsByTitle(createBookCommand.getTitle())).thenReturn(true);
+        bookService.blockBook(bookId);
 
-        assertThrows(DuplicateResourceException.class, () -> bookService.createBook(createBookCommand));
+        Mockito.verify(bookRepository, Mockito.times(1)).blockBook(bookId);
     }
-
 
     @Test
-    void testBlockBook() {
-        Book book = new Book();
-        book.setId(1L);
-        book.setTitle("Book One");
-        book.setAuthor("Author One");
-        book.setAvailable(true);
+    void testBlockBookWithFailedBlocking() {
+        Long bookId = 1L;
+        when(bookRepository.blockBook(bookId)).thenReturn(0);
 
-        when(bookRepository.existsById(1L)).thenReturn(true);
-        when(bookRepository.findById(1L)).thenReturn(Optional.of(book));
 
-        bookService.blockBook(1L);
-
-        Mockito.verify(bookRepository, Mockito.times(1)).blockBook(1L);
-
-        BookDto blockedBookDto = new BookDto();
-        blockedBookDto.setId(book.getId());
-        blockedBookDto.setTitle(book.getTitle());
-        blockedBookDto.setAuthor(book.getAuthor());
-        blockedBookDto.setAvailable(false);
-
-        BookDto expectedBlockedBookDto = new BookDto();
-        expectedBlockedBookDto.setId(1L);
-        expectedBlockedBookDto.setTitle("Book One");
-        expectedBlockedBookDto.setAuthor("Author One");
-        expectedBlockedBookDto.setAvailable(false);
-
-        Assertions.assertEquals(expectedBlockedBookDto.getId(), blockedBookDto.getId());
-        Assertions.assertEquals(expectedBlockedBookDto.getTitle(), blockedBookDto.getTitle());
-        Assertions.assertEquals(expectedBlockedBookDto.getAuthor(), blockedBookDto.getAuthor());
-        Assertions.assertEquals(expectedBlockedBookDto.isAvailable(), blockedBookDto.isAvailable());
+        assertThrows(ResourceNotFoundException.class, () -> bookService.blockBook(bookId));
     }
 
+    @Test
+    void testBlockBookWhenNotExisting() {
+        Long nonExistentBookId = 2L;
+
+        when(bookRepository.blockBook(nonExistentBookId)).thenReturn(0);
+        assertThrows(ResourceNotFoundException.class, () -> bookService.blockBook(nonExistentBookId));
+
+        Mockito.verify(bookRepository, Mockito.times(1)).blockBook(nonExistentBookId);
+    }
 
     @Test
     public void testBlockBookWhenNotFound() {
@@ -125,6 +112,100 @@ public class BookServiceTest {
 
         assertThrows(ResourceNotFoundException.class, () -> bookService.blockBook(1L));
     }
+
+    @Test
+    public void testCreateBookWithEmptyTitle() {
+        CreateBookCommand createBookCommand = new CreateBookCommand();
+        createBookCommand.setTitle("");
+        createBookCommand.setAuthor("Author One");
+
+        assertThrows(IllegalArgumentException.class, () -> bookService.createBook(createBookCommand));
+    }
+
+    @Test
+    public void testCreateBookWithEmptyAuthor() {
+        CreateBookCommand createBookCommand = new CreateBookCommand();
+        createBookCommand.setTitle("Book One");
+        createBookCommand.setAuthor("");
+
+        assertThrows(IllegalArgumentException.class, () -> bookService.createBook(createBookCommand));
+    }
+
+    @Test
+    public void testCreateBookWithEmptyTitleAndAuthor() {
+        CreateBookCommand createBookCommand = new CreateBookCommand();
+        createBookCommand.setTitle("");
+        createBookCommand.setAuthor("");
+
+        assertThrows(IllegalArgumentException.class, () -> bookService.createBook(createBookCommand));
+    }
+
+    @Test
+    public void testCreateBookWithNullTitleAndAuthor() {
+        CreateBookCommand createBookCommand = new CreateBookCommand();
+        createBookCommand.setTitle(null);
+        createBookCommand.setAuthor(null);
+
+        assertThrows(IllegalArgumentException.class, () -> bookService.createBook(createBookCommand));
+    }
+
+    @Test
+    public void testCreateBookWithUnknownDatabaseError() {
+        CreateBookCommand createBookCommand = new CreateBookCommand();
+        createBookCommand.setTitle("Book One");
+        createBookCommand.setAuthor("Author One");
+
+        DataIntegrityViolationException dataIntegrityViolationException = new DataIntegrityViolationException("");
+
+        when(bookRepository.save(any(Book.class))).thenThrow(dataIntegrityViolationException);
+
+        assertThrows(DatabaseException.class, () -> bookService.createBook(createBookCommand));
+    }
+
+    @Test
+    public void testCreateBookWithOptimisticLockException() {
+        CreateBookCommand createBookCommand = new CreateBookCommand();
+        createBookCommand.setTitle("Book One");
+        createBookCommand.setAuthor("Author One");
+
+        when(bookRepository.save(any(Book.class))).thenThrow(new OptimisticLockException());
+
+        assertThrows(ConcurrentModificationException.class, () -> bookService.createBook(createBookCommand));
+    }
+
+    @Test
+    public void testCreateBookWithExistingTitle() {
+        CreateBookCommand createBookCommand = new CreateBookCommand();
+        createBookCommand.setTitle("Existing Title");
+        createBookCommand.setAuthor("Author One");
+
+        when(bookRepository.existsByTitle(createBookCommand.getTitle())).thenReturn(true);
+
+        assertThrows(DuplicateResourceException.class, () -> bookService.createBook(createBookCommand));
+    }
+
+    @Test
+    public void testCreateBookMappingLogic() {
+        CreateBookCommand createBookCommand = new CreateBookCommand();
+        createBookCommand.setTitle("New Book");
+        createBookCommand.setAuthor("New Author");
+
+        Book book = new Book();
+        book.setId(10L);
+        book.setTitle("New Book");
+        book.setAuthor("New Author");
+        book.setAvailable(true);
+
+        when(bookRepository.save(any(Book.class))).thenReturn(book);
+
+        BookDto resultDto = bookService.createBook(createBookCommand);
+
+        Assertions.assertEquals(book.getId(), resultDto.getId());
+        Assertions.assertEquals(book.getTitle(), resultDto.getTitle());
+        Assertions.assertEquals(book.getAuthor(), resultDto.getAuthor());
+        Assertions.assertEquals(book.isAvailable(), resultDto.isAvailable());
+    }
+
 
     @Test
     void testGetAllBooks() {
@@ -169,6 +250,37 @@ public class BookServiceTest {
             Assertions.assertEquals(expectedBookDto.isAvailable(), actualBookDto.isAvailable());
         }
     }
+
+    @Test
+    void testGetAllBooksWithNoBooks() {
+        when(bookRepository.findAll(any(Pageable.class))).thenReturn(Page.empty());
+
+        Page<BookDto> bookDtoPage = bookService.getAllBooks(PageRequest.of(0, 10));
+
+        Mockito.verify(bookRepository, Mockito.times(1)).findAll(any(Pageable.class));
+        Assertions.assertTrue(bookDtoPage.getContent().isEmpty());
+    }
+
+    @Test
+    void testGetAllBooksWithLessBooksThanPageSize() {
+        List<Book> books = new ArrayList<>();
+        Book book1 = new Book();
+        book1.setId(1L);
+        book1.setTitle("Book One");
+        book1.setAuthor("Author One");
+        book1.setAvailable(true);
+        books.add(book1);
+
+        Page<Book> bookPage = new PageImpl<>(books);
+
+        when(bookRepository.findAll(any(Pageable.class))).thenReturn(bookPage);
+
+        Page<BookDto> bookDtoPage = bookService.getAllBooks(PageRequest.of(0, 10));
+
+        Mockito.verify(bookRepository, Mockito.times(1)).findAll(any(Pageable.class));
+        Assertions.assertEquals(1, bookDtoPage.getContent().size());
+    }
+
 
 }
 
