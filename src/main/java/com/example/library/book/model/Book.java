@@ -31,9 +31,4 @@ public class Book {
     @Column(nullable = true, columnDefinition = "integer default 0")
     private Integer version;
 
-    @Column(name = "is_deleted", nullable = false, columnDefinition = "boolean default false")
-    private boolean isDeleted;
-
-
-
 }

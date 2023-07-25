@@ -15,11 +15,9 @@ public interface BookRepository extends JpaRepository<Book, Long> {
     @Query("SELECT b FROM Book b WHERE b.id = :id")
     Optional<Book> findByIdForWrite(@Param("id") Long id);
 
-    Optional<Book> findByTitle(String title);
-
     @Modifying
     @Query("UPDATE Book b SET b.available = false WHERE b.id = :bookId")
-    void blockBook(@Param("bookId") Long id);
+    int blockBook(@Param("bookId") Long id);
 
     boolean existsByTitle(String title);
 }
